@@ -374,10 +374,13 @@ export default function App() {
     }
   }
 
-  const filtered = activeTab === '전체' ? posts : posts.filter(p => p.category === activeTab)
+  const filtered = activeTab === '전체'
+    ? posts.filter(p => p.category !== '기타')
+    : posts.filter(p => p.category === activeTab)
 
   function tabCount(cat) {
-    return cat === '전체' ? posts.length : posts.filter(p => p.category === cat).length
+    if (cat === '전체') return posts.filter(p => p.category !== '기타').length
+    return posts.filter(p => p.category === cat).length
   }
 
   function handleLogin() { setIsAdmin(true); setShowLogin(false) }
@@ -492,7 +495,7 @@ export default function App() {
 
         {filtered.length === 0 ? (
           <div className="empty-row">등록된 게시물이 없습니다.</div>
-        ) : activeTab === '전체' ? (
+        ) : (
           <div className="card-feed">
             {filtered.map((post, idx) => (
               <PostCard
@@ -507,23 +510,6 @@ export default function App() {
               />
             ))}
           </div>
-        ) : (
-          <ul className="post-list">
-            {filtered.map((post, idx) => (
-              <PostAccordion
-                key={post.id}
-                post={post}
-                idx={idx}
-                total={filtered.length}
-                isFirst={idx === 0}
-                isLast={idx === filtered.length - 1}
-                isAdmin={isAdmin}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onMove={handleMove}
-              />
-            ))}
-          </ul>
         )}
       </div>
 

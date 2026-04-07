@@ -10,7 +10,10 @@
       "Bash(node -e ':*)",
       "Bash(curl:*)",
       "Bash(ls C:/Boramae/info-board/.env*)",
-      "Bash(node server/index.js)"
+      "Bash(node server/index.js)",
+      "Bash(netstat -ano)",
+      "Bash(xargs -I {} taskkill /PID {} /F)",
+      "Bash(taskkill:*)"
     ]
   }
 }
