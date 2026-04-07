@@ -6,6 +6,9 @@
   },
   "deploy": {
     "startCommand": "node server/index.js",
-    "healthcheckPath": "/api/posts"
+    "healthcheckPath": "/api/posts",
+    "env": {
+      "NIXPACKS_NODE_VERSION": "22.12.0"
+    }
   }
 }
