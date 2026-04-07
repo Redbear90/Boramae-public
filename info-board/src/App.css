@@ -494,6 +494,38 @@ body {
 .post-card-public { border-left: 3px solid #a0b4e0; }
 .is-public-post { background: #fafbff; }
 
+/* ===== Empty / Loading ===== */
+.empty-row {
+  text-align: center;
+  padding: 60px 20px;
+  color: #aaa;
+  font-size: 15px;
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: #888;
+  font-size: 15px;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #d0d8e8;
+  border-top-color: #1a3a6b;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ===== Mobile ===== */
 @media (max-width: 600px) {
   .post-row { padding: 12px 8px; gap: 8px; }

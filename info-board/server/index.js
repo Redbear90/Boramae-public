@@ -217,4 +217,16 @@ app.get('/{*splat}', (req, res) => {
 
 app.listen(port, () => {
   console.log(`서버가 포트 ${port} 에서 실행 중입니다.`);
+  // 서버 시작 시 DB 연결 미리 수립 (첫 요청 지연 방지)
+  pool.query('SELECT 1').catch(err => console.error('DB 워밍업 실패:', err));
+
+  // Render 무료 플랜 cold start 방지: 14분마다 self-ping
+  const APP_URL = process.env.APP_URL;
+  if (APP_URL) {
+    setInterval(() => {
+      fetch(`${APP_URL}/health`)
+        .then(() => console.log('keep-alive ping 성공'))
+        .catch(err => console.error('keep-alive ping 실패:', err));
+    }, 14 * 60 * 1000); // 14분 (Render는 15분 비활성 시 슬립)
+  }
 });

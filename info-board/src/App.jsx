@@ -349,6 +349,7 @@ function LoginDrawer({ onClose, onLogin }) {
 /* ── App ── */
 export default function App() {
   const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [activeTab, setActiveTab] = useState('전체')
 
@@ -357,13 +358,16 @@ export default function App() {
   const [showPublicForm, setShowPublicForm] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
 
-  const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/posts`
+  const BASE_URL = import.meta.env.VITE_API_URL || ''
+  const API_URL = `${BASE_URL}/api/posts`
 
   useEffect(() => {
+    // cold start 단축: 헬스체크와 데이터 요청을 동시에 날림
     fetchPosts()
   }, [isAdmin])
 
   async function fetchPosts() {
+    setLoading(true)
     try {
       const url = isAdmin ? `${API_URL}?admin=1` : API_URL
       const res = await fetch(url)
@@ -371,6 +375,8 @@ export default function App() {
       setPosts(data)
     } catch (err) {
       console.error('데이터를 가져오는데 실패했습니다:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -493,7 +499,12 @@ export default function App() {
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="loading-row">
+            <span className="loading-spinner" />
+            데이터를 불러오는 중...
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="empty-row">등록된 게시물이 없습니다.</div>
         ) : (
           <div className="card-feed">
