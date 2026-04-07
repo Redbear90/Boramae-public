@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import './App.css'
 
+/* ── URL을 클릭 가능한 링크로 변환 ── */
+function renderContent(text) {
+  if (!text) return null
+  const parts = text.split(/(https?:\/\/[^\s\u3000\u200b<>"']+)/)
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="content-link">{part}</a>
+      : part
+  )
+}
+
 const ADMIN_ID = 'admin'
 const ADMIN_PW = 'admin1234'
 const CONTACT_PHONE = '010-2930-3705'
@@ -244,7 +255,7 @@ function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onD
                 </div>
               )}
               <div className="detail-body">
-                {displayContent}
+                {renderContent(displayContent)}
               </div>
               <ReplySection post={post} isAdmin={isAdmin} apiUrl={apiUrl} onRefresh={onRefresh} />
               {isAdmin && (
@@ -285,7 +296,7 @@ function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove, ap
       </div>
       <h2 className="post-card-title">{post.title}</h2>
       <div className={`post-card-body${isPublic && !isAdmin ? ' content-locked' : ''}`}>
-        {post.content}
+        {isPublic && !isAdmin ? post.content : renderContent(post.content)}
       </div>
       {!isPublic && post.images && post.images.length > 0 && (
         <ImageList images={post.images} />
@@ -635,6 +646,10 @@ export default function App() {
   const telHref = `tel:${CONTACT_PHONE.replace(/[^0-9]/g, '')}`
   const isInquiryTab = activeTab === '문의사항'
 
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <>
       <header className="header">
@@ -644,10 +659,6 @@ export default function App() {
             <small>신대방동 360-17번지 정보공유</small>
           </div>
           <div className="header-right">
-            <a className="btn btn-call" href={telHref}>
-              <span className="call-icon">📞</span>
-              <span className="call-text">연락하기</span>
-            </a>
             {isAdmin ? (
               <>
                 <span className="admin-badge">관리자</span>
@@ -732,12 +743,17 @@ export default function App() {
       <footer className="footer">
         <div className="footer-contact">
           <a href={telHref} className="footer-tel">📞 {CONTACT_PHONE}</a>
-          <span className="footer-tel-desc">문의사항은 전화로 연락 주세요</span>
+          <span className="footer-tel-desc">   문의사항은 전화로 연락 주세요</span>
         </div>
         <div className="footer-copy">
           © 2026 보라매 신속통합개발 정보공유 · 본 사이트의 정보는 참고용으로만 활용하시기 바랍니다.
         </div>
       </footer>
+
+      <div className="floating-actions">
+        <a className="float-btn float-call" href={telHref} title="전화 연락하기">📞</a>
+        <button className="float-btn float-top" onClick={scrollToTop} title="최상단으로">↑</button>
+      </div>
 
       {isAdmin && (
         <button className="fab" onClick={() => { setEditingPost(null); setShowForm(true) }}>+</button>
