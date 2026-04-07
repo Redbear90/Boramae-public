@@ -4,8 +4,13 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -190,6 +195,15 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
+// --- 배포용 정적 파일 서비스 추가 ---
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// API 경로 외의 모든 요청은 index.html로 보냄 (SPA 지원)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 app.listen(port, () => {
-  console.log(`서버가 http://localhost:${port} 에서 실행 중입니다.`);
+  console.log(`서버가 포트 ${port} 에서 실행 중입니다.`);
 });
