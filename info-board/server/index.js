@@ -20,7 +20,6 @@ app.use(express.json({ limit: '50mb' }));
 
 const { Pool } = pg;
 
-// 헬스체크 엔드포인트 (DB 연결 불필요)
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 if (!process.env.DATABASE_URL) {
@@ -32,7 +31,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// AES-256-GCM 암호화 키 (32바이트). .env의 ENCRYPT_KEY 우선, 없으면 고정값 사용
 const ENCRYPT_KEY = Buffer.from(
   (process.env.ENCRYPT_KEY || 'boramae_info_board_secret_key_32').padEnd(32, '0').slice(0, 32),
   'utf8'
@@ -58,7 +56,6 @@ function decrypt(data) {
   } catch { return '[복호화 실패]'; }
 }
 
-// IP 마스킹: 마지막 옥텟 숨김 (IPv4: 1.2.3.xxx / IPv6: 앞 4그룹만)
 function maskIp(ip) {
   if (!ip) return null;
   const v4 = ip.match(/^(\d+\.\d+\.\d+)\.\d+$/);
@@ -74,15 +71,19 @@ function getClientIp(req) {
   return req.socket?.remoteAddress || null;
 }
 
-// replies 테이블 자동 생성
+// replies 테이블 + phone 컬럼 자동 생성/추가
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS replies (
-      id        SERIAL PRIMARY KEY,
-      post_id   INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-      content   TEXT NOT NULL,
+      id         SERIAL PRIMARY KEY,
+      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      content    TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  // phone 컬럼이 없으면 추가 (기존 DB 호환)
+  await pool.query(`
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS phone TEXT
   `);
 }
 
@@ -107,21 +108,23 @@ app.get('/api/posts', async (req, res) => {
     }
 
     const rows = postsResult.rows.map(post => {
-      const postWithReplies = {
+      const base = {
         ...post,
         images: post.images || [],
         replies: repliesByPost[post.id] || [],
       };
       if (post.is_public_post) {
         return {
-          ...postWithReplies,
-          content: isAdmin ? decrypt(post.content) : '비밀글입니다.',
+          ...base,
+          // 관리자: 복호화된 내용 + 연락처 + IP / 일반: 잠금
+          content: isAdmin ? decrypt(post.content) : null,
+          phone: isAdmin ? post.phone : undefined,
           password: undefined,
           ip_address: isAdmin ? post.ip_address : undefined,
           masked_ip: isAdmin ? maskIp(post.ip_address) : undefined,
         };
       }
-      return postWithReplies;
+      return base;
     });
     res.json(rows);
   } catch (err) {
@@ -147,9 +150,9 @@ app.post('/api/posts', async (req, res) => {
   }
 });
 
-// 2-1. 문의사항탭 공개 글쓰기 (비밀번호 필수, IP 수집, 내용 암호화)
+// 2-1. 문의사항 공개 글쓰기
 app.post('/api/posts/public', async (req, res) => {
-  const { title, content, password, author } = req.body;
+  const { title, content, password, author, phone } = req.body;
   if (!title?.trim() || !content?.trim() || !password?.trim()) {
     return res.status(400).json({ error: '제목, 내용, 비밀번호는 필수입니다.' });
   }
@@ -162,12 +165,13 @@ app.post('/api/posts/public', async (req, res) => {
     const hashedPw = await bcrypt.hash(password, 10);
     const encryptedContent = encrypt(content);
     const displayAuthor = author?.trim() || '익명';
+    const displayPhone = phone?.trim() || null;
 
     const result = await pool.query(
-      `INSERT INTO posts (title, content, category, author, date, time, images, password, ip_address, is_public_post, sort_order)
-       VALUES ($1, $2, '문의사항', $3, $4, $5, '{}', $6, $7, TRUE, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM posts))
+      `INSERT INTO posts (title, content, category, author, date, time, images, password, ip_address, is_public_post, phone, sort_order)
+       VALUES ($1, $2, '문의사항', $3, $4, $5, '{}', $6, $7, TRUE, $8, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM posts))
        RETURNING id, title, category, author, date, time, is_public_post`,
-      [title.trim(), encryptedContent, displayAuthor, date, time, hashedPw, ip]
+      [title.trim(), encryptedContent, displayAuthor, date, time, hashedPw, ip, displayPhone]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -176,7 +180,33 @@ app.post('/api/posts/public', async (req, res) => {
   }
 });
 
-// 3. 게시물 순서 변경 (위/아래 이동)
+// 2-2. 비밀번호 검증 → 맞으면 복호화된 내용 반환
+app.post('/api/posts/:id/verify', async (req, res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: '비밀번호를 입력해주세요.' });
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT content, password, phone FROM posts WHERE id = $1 AND is_public_post = TRUE',
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: '게시물을 찾을 수 없습니다.' });
+
+    const match = await bcrypt.compare(password, rows[0].password);
+    if (!match) return res.status(401).json({ error: '비밀번호가 올바르지 않습니다.' });
+
+    res.json({
+      content: decrypt(rows[0].content),
+      phone: rows[0].phone || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// 3. 게시물 순서 변경
 app.patch('/api/posts/:id/move', async (req, res) => {
   const { id } = req.params;
   const { direction } = req.body;
@@ -230,13 +260,11 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
-// 6. 답글 작성 (관리자 전용)
+// 6. 답글 작성
 app.post('/api/posts/:id/replies', async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
-  if (!content?.trim()) {
-    return res.status(400).json({ error: '내용을 입력해주세요.' });
-  }
+  if (!content?.trim()) return res.status(400).json({ error: '내용을 입력해주세요.' });
   try {
     const result = await pool.query(
       'INSERT INTO replies (post_id, content) VALUES ($1, $2) RETURNING *',
@@ -249,7 +277,7 @@ app.post('/api/posts/:id/replies', async (req, res) => {
   }
 });
 
-// 7. 답글 삭제 (관리자 전용)
+// 7. 답글 삭제
 app.delete('/api/replies/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -261,11 +289,8 @@ app.delete('/api/replies/:id', async (req, res) => {
   }
 });
 
-// --- 배포용 정적 파일 서비스 추가 ---
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
-
-// API 경로 외의 모든 요청은 index.html로 보냄 (SPA 지원)
 app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
@@ -279,7 +304,6 @@ app.listen(port, async () => {
     console.error('DB 초기화 실패:', err);
   }
 
-  // Render 무료 플랜 cold start 방지: 14분마다 self-ping
   const APP_URL = process.env.APP_URL;
   if (APP_URL) {
     setInterval(() => {

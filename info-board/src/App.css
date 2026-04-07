@@ -526,6 +526,67 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ===== 비밀번호 확인 모달 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-head h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+
+.modal-body {
+  padding: 16px 20px 20px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+/* ===== 연락처 표시 ===== */
+.detail-phone {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f0f4fb;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.detail-phone a {
+  color: #1a3a6b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 /* ===== 답글 ===== */
 .reply-section {
   margin-top: 12px;

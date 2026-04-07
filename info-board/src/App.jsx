@@ -28,7 +28,54 @@ function ImageList({ images }) {
   )
 }
 
-/* ── 답글 영역 (문의사항 전용) ── */
+/* ── 비밀번호 확인 모달 ── */
+function PasswordModal({ onClose, onSuccess }) {
+  const [pw, setPw] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!pw.trim()) return setError('비밀번호를 입력해주세요.')
+    setLoading(true)
+    setError('')
+    onSuccess(pw, setError, setLoading)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>비밀번호 확인</h3>
+          <button className="drawer-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-desc">작성 시 설정한 비밀번호를 입력하세요.</p>
+          {error && <div className="error-msg">{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <input
+                type="password"
+                value={pw}
+                onChange={e => setPw(e.target.value)}
+                placeholder="비밀번호"
+                autoFocus
+              />
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary btn-full" onClick={onClose}>취소</button>
+              <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+                {loading ? '확인 중...' : '확인'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── 답글 영역 ── */
 function ReplySection({ post, isAdmin, apiUrl, onRefresh }) {
   const [text, setText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -98,7 +145,128 @@ function ReplySection({ post, isAdmin, apiUrl, onRefresh }) {
   )
 }
 
-/* ── 게시물 카드 (전체탭: 항상 펼침) ── */
+/* ── 게시물 아코디언 행 (문의사항탭) ── */
+function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onDelete, onMove, apiUrl, onRefresh }) {
+  const [open, setOpen] = useState(false)
+  const [showPwModal, setShowPwModal] = useState(false)
+  // 비밀번호 인증 후 저장되는 복호화 데이터
+  const [unlockedData, setUnlockedData] = useState(null)
+
+  const isPublic = post.is_public_post
+  const hasReply = (post.replies?.length || 0) > 0
+  // 관리자는 서버에서 이미 복호화된 content를 받음
+  const isUnlocked = isAdmin || unlockedData !== null
+
+  function handleRowClick() {
+    if (!isPublic) { setOpen(o => !o); return }
+    if (isUnlocked) { setOpen(o => !o); return }
+    // 비공개글: 비밀번호 모달 먼저
+    setShowPwModal(true)
+  }
+
+  async function handlePasswordSuccess(pw, setError, setLoading) {
+    try {
+      const base = apiUrl.replace('/api/posts', '')
+      const res = await fetch(`${base}/api/posts/${post.id}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || '비밀번호가 올바르지 않습니다.')
+        setLoading(false)
+        return
+      }
+      setUnlockedData(data)
+      setShowPwModal(false)
+      setOpen(true)
+    } catch {
+      setError('서버에 연결할 수 없습니다.')
+      setLoading(false)
+    }
+  }
+
+  const displayContent = isAdmin
+    ? post.content
+    : unlockedData?.content ?? null
+
+  const displayPhone = isAdmin
+    ? post.phone
+    : unlockedData?.phone ?? null
+
+  return (
+    <>
+      <li className={`post-item${post.category === '공지' ? ' is-notice' : ''}${open ? ' is-open' : ''}${isPublic ? ' is-public-post' : ''}`}>
+        <div className="post-row" onClick={handleRowClick}>
+          <div className="post-row-left">
+            <span className="post-num">
+              {post.category === '공지'
+                ? <span className="cat-tag cat-공지" style={{ fontSize: 10 }}>공지</span>
+                : total - idx
+              }
+            </span>
+            <span className={`cat-tag ${catClass(post.category)}`}>{post.category}</span>
+            {isPublic && <span className="lock-icon">🔒</span>}
+            <span className="post-title-text">{post.title}</span>
+            {hasReply && <span className="reply-badge">{post.replies.length}</span>}
+          </div>
+          <div className="post-row-right">
+            <span className="post-date">{post.date}{post.time ? ` ${post.time}` : ''}</span>
+            <span className={`accordion-arrow${open ? ' open' : ''}`}>›</span>
+            {isAdmin && (
+              <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                <button className="btn btn-order btn-sm" onClick={() => onMove(post.id, 'up')} disabled={isFirst}>▲</button>
+                <button className="btn btn-order btn-sm" onClick={() => onMove(post.id, 'down')} disabled={isLast}>▼</button>
+                {!isPublic && <button className="btn btn-secondary btn-sm" onClick={() => onEdit(post)}>수정</button>}
+                <button className="btn btn-danger btn-sm" onClick={() => onDelete(post.id)}>삭제</button>
+              </div>
+            )}
+          </div>
+        </div>
+        {open && (
+          <div className="post-detail-inline">
+            <div className="detail-inner">
+              <h2 className="detail-title-lg">{post.title}</h2>
+              <div className="detail-meta">
+                <span className={`cat-tag ${catClass(post.category)}`}>{post.category}</span>
+                <span className="meta-sep">|</span>
+                <span>{post.author}</span>
+                <span className="meta-sep">|</span>
+                <span>{post.date}{post.time ? ` ${post.time}` : ''}</span>
+                {isAdmin && post.masked_ip && (
+                  <><span className="meta-sep">|</span><span className="meta-ip">IP: {post.masked_ip}</span></>
+                )}
+              </div>
+              {displayPhone && (
+                <div className="detail-phone">
+                  연락처: <a href={`tel:${displayPhone.replace(/[^0-9]/g, '')}`}>{displayPhone}</a>
+                </div>
+              )}
+              <div className="detail-body">
+                {displayContent}
+              </div>
+              <ReplySection post={post} isAdmin={isAdmin} apiUrl={apiUrl} onRefresh={onRefresh} />
+              {isAdmin && (
+                <div className="detail-admin-bar">
+                  <button className="btn btn-danger btn-sm" onClick={() => onDelete(post.id)}>삭제</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </li>
+      {showPwModal && (
+        <PasswordModal
+          onClose={() => setShowPwModal(false)}
+          onSuccess={handlePasswordSuccess}
+        />
+      )}
+    </>
+  )
+}
+
+/* ── 게시물 카드 (전체탭) ── */
 function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove, apiUrl, onRefresh }) {
   const isPublic = post.is_public_post
   return (
@@ -137,76 +305,12 @@ function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove, ap
   )
 }
 
-/* ── 게시물 아코디언 행 (문의사항탭) ── */
-function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onDelete, onMove, apiUrl, onRefresh }) {
-  const [open, setOpen] = useState(false)
-  const isPublic = post.is_public_post
-  const hasReply = (post.replies?.length || 0) > 0
-  return (
-    <li className={`post-item${post.category === '공지' ? ' is-notice' : ''}${open ? ' is-open' : ''}${isPublic ? ' is-public-post' : ''}`}>
-      <div className="post-row" onClick={() => setOpen(o => !o)}>
-        <div className="post-row-left">
-          <span className="post-num">
-            {post.category === '공지'
-              ? <span className="cat-tag cat-공지" style={{ fontSize: 10 }}>공지</span>
-              : total - idx
-            }
-          </span>
-          <span className={`cat-tag ${catClass(post.category)}`}>{post.category}</span>
-          {isPublic && <span className="lock-icon">🔒</span>}
-          <span className="post-title-text">{post.title}</span>
-          {hasReply && <span className="reply-badge">{post.replies.length}</span>}
-        </div>
-        <div className="post-row-right">
-          <span className="post-date">{post.date}{post.time ? ` ${post.time}` : ''}</span>
-          <span className={`accordion-arrow${open ? ' open' : ''}`}>›</span>
-          {isAdmin && (
-            <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-              <button className="btn btn-order btn-sm" onClick={() => onMove(post.id, 'up')} disabled={isFirst}>▲</button>
-              <button className="btn btn-order btn-sm" onClick={() => onMove(post.id, 'down')} disabled={isLast}>▼</button>
-              {!isPublic && <button className="btn btn-secondary btn-sm" onClick={() => onEdit(post)}>수정</button>}
-              <button className="btn btn-danger btn-sm" onClick={() => onDelete(post.id)}>삭제</button>
-            </div>
-          )}
-        </div>
-      </div>
-      {open && (
-        <div className="post-detail-inline">
-          <div className="detail-inner">
-            <h2 className="detail-title-lg">{post.title}</h2>
-            <div className="detail-meta">
-              <span className={`cat-tag ${catClass(post.category)}`}>{post.category}</span>
-              <span className="meta-sep">|</span>
-              <span>{post.author}</span>
-              <span className="meta-sep">|</span>
-              <span>{post.date}{post.time ? ` ${post.time}` : ''}</span>
-              {isAdmin && post.masked_ip && (
-                <><span className="meta-sep">|</span><span className="meta-ip">IP: {post.masked_ip}</span></>
-              )}
-            </div>
-            <div className={`detail-body${isPublic && !isAdmin ? ' content-locked' : ''}`}>
-              {post.content}
-            </div>
-            {!isPublic && post.images && post.images.length > 0 && <ImageList images={post.images} />}
-            <ReplySection post={post} isAdmin={isAdmin} apiUrl={apiUrl} onRefresh={onRefresh} />
-            {isAdmin && (
-              <div className="detail-admin-bar">
-                <button className="btn btn-danger btn-sm" onClick={() => onDelete(post.id)}>삭제</button>
-                {!isPublic && <button className="btn btn-secondary btn-sm" onClick={() => onEdit(post)}>수정</button>}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </li>
-  )
-}
-
 /* ── 문의사항 글쓰기 드로어 ── */
 function PublicPostDrawer({ onClose, onSaved, apiBaseUrl }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const [error, setError] = useState('')
@@ -229,7 +333,13 @@ function PublicPostDrawer({ onClose, onSaved, apiBaseUrl }) {
       const res = await fetch(`${apiBaseUrl}/api/posts/public`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), content: content.trim(), author: author.trim(), password })
+        body: JSON.stringify({
+          title: title.trim(),
+          content: content.trim(),
+          author: author.trim(),
+          phone: phone.trim(),
+          password,
+        })
       })
       if (res.ok) {
         onSaved()
@@ -263,6 +373,11 @@ function PublicPostDrawer({ onClose, onSaved, apiBaseUrl }) {
               <label>작성자 <span className="label-optional">(선택)</span></label>
               <input type="text" value={author} onChange={e => setAuthor(e.target.value)}
                 maxLength={20} placeholder="익명" />
+            </div>
+            <div className="form-group">
+              <label>연락처 <span className="label-optional">(선택)</span></label>
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                maxLength={20} placeholder="010-0000-0000" />
             </div>
             <div className="form-group">
               <label>제목</label>
@@ -522,7 +637,6 @@ export default function App() {
 
   return (
     <>
-      {/* 헤더 */}
       <header className="header">
         <div className="header-inner">
           <div className="site-title">
@@ -546,7 +660,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 탭 */}
       <nav className="nav-bar">
         <div className="nav-inner">
           {CATEGORIES.map(cat => (
@@ -561,9 +674,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 본문 */}
       <div className="page-wrap">
-        {/* 문의사항탭: 글쓰기 버튼 (비로그인도 가능) */}
         {isInquiryTab && !isAdmin && (
           <div className="public-write-bar">
             <button className="btn btn-primary" onClick={() => setShowPublicForm(true)}>
@@ -618,7 +729,6 @@ export default function App() {
         )}
       </div>
 
-      {/* 푸터 */}
       <footer className="footer">
         <div className="footer-contact">
           <a href={telHref} className="footer-tel">📞 {CONTACT_PHONE}</a>
@@ -629,7 +739,6 @@ export default function App() {
         </div>
       </footer>
 
-      {/* 관리자 FAB */}
       {isAdmin && (
         <button className="fab" onClick={() => { setEditingPost(null); setShowForm(true) }}>+</button>
       )}
