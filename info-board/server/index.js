@@ -19,10 +19,15 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // 헬스체크 엔드포인트 (DB 연결 불필요)
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL 환경변수가 설정되지 않았습니다.');
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // AES-256-GCM 암호화 키 (32바이트). .env의 ENCRYPT_KEY 우선, 없으면 고정값 사용
 const ENCRYPT_KEY = Buffer.from(
