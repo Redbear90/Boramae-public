@@ -742,9 +742,10 @@ export default function App() {
 
       <footer className="footer">
         <div className="footer-contact">
-          <a href={telHref} className="footer-tel">📞 {CONTACT_PHONE}</a>
-          <span className="footer-tel-desc">   문의사항은 전화로 연락 주세요</span>
+          <a href={telHref} className="footer-tel">📞</a>
+          <span className="footer-tel-desc"> 문의사항은 전화로 연락 주세요</span>
         </div>
+
         <div className="footer-copy">
           © 2026 보라매 신속통합개발 정보공유 · 본 사이트의 정보는 참고용으로만 활용하시기 바랍니다.
         </div>
