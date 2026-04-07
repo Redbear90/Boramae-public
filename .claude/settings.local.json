@@ -8,7 +8,8 @@
       "Bash(npm run:*)",
       "WebFetch(domain:xn--2w2b233bt0bgyg.com)",
       "Bash(node -e ':*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ls C:/Boramae/info-board/.env*)"
     ]
   }
 }
