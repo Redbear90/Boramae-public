@@ -431,12 +431,8 @@ export default function App() {
   const [showPublicForm, setShowPublicForm] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
 
-  const BASE_URL = import.meta.env.VITE_API_URL || ''
+  const BASE_URL = import.meta.env.VITE_API_URL || 'https://boramae-public-production.up.railway.app'
   const API_URL = `${BASE_URL}/api/posts`
-
-  useEffect(() => {
-    fetchPosts()
-  }, [fetchPosts])
 
   const fetchPosts = useCallback(async () => {
     setLoading(true)
@@ -451,6 +447,10 @@ export default function App() {
       setLoading(false)
     }
   }, [isAdmin, API_URL])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [fetchPosts])
 
   const filtered = activeTab === '전체'
     ? posts.filter(p => p.category !== '문의사항')
