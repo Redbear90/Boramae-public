@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import './App.css'
 
 const ADMIN_ID = 'admin'
 const ADMIN_PW = 'admin1234'
 const CONTACT_PHONE = '010-2930-3705'
-const CATEGORIES = ['전체', '사업개요', '사업정보', '입지환경', '접수처', 'Q & A', '기타']
+const CATEGORIES = ['전체', '사업개요', '사업정보', '입지환경', '접수처', 'Q & A', '문의사항']
 
 function catClass(cat) {
   const map = {
     '공지': 'cat-공지', '사업개요': 'cat-사업개요', '사업정보': 'cat-사업정보',
-    '입지환경': 'cat-입지환경', '접수처': 'cat-접수처', 'Q & A': 'cat-QA', '기타': 'cat-기타',
+    '입지환경': 'cat-입지환경', '접수처': 'cat-접수처', 'Q & A': 'cat-QA', '문의사항': 'cat-기타',
   }
   return map[cat] || 'cat-기타'
 }
@@ -28,8 +28,78 @@ function ImageList({ images }) {
   )
 }
 
+/* ── 답글 영역 (문의사항 전용) ── */
+function ReplySection({ post, isAdmin, apiUrl, onRefresh }) {
+  const [text, setText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submitReply(e) {
+    e.preventDefault()
+    if (!text.trim()) return
+    setSubmitting(true)
+    try {
+      await fetch(`${apiUrl}/${post.id}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text.trim() }),
+      })
+      setText('')
+      onRefresh()
+    } catch (err) { console.error(err) }
+    finally { setSubmitting(false) }
+  }
+
+  async function deleteReply(replyId) {
+    if (!window.confirm('답글을 삭제하시겠습니까?')) return
+    try {
+      const base = apiUrl.replace('/api/posts', '')
+      await fetch(`${base}/api/replies/${replyId}`, { method: 'DELETE' })
+      onRefresh()
+    } catch (err) { console.error(err) }
+  }
+
+  const replies = post.replies || []
+
+  return (
+    <div className="reply-section">
+      {replies.length > 0 && (
+        <ul className="reply-list">
+          {replies.map(r => (
+            <li key={r.id} className="reply-item">
+              <span className="reply-admin-label">관리자</span>
+              <span className="reply-content">{r.content}</span>
+              <span className="reply-date">
+                {new Date(r.created_at).toLocaleString('ko-KR', {
+                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                })}
+              </span>
+              {isAdmin && (
+                <button className="btn btn-danger btn-xs reply-del" onClick={() => deleteReply(r.id)}>삭제</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isAdmin && (
+        <form className="reply-form" onSubmit={submitReply}>
+          <textarea
+            className="reply-input"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="답글을 입력하세요..."
+            rows={2}
+          />
+          <button type="submit" className="btn btn-primary btn-sm" disabled={submitting || !text.trim()}>
+            {submitting ? '등록 중...' : '답글 등록'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
 /* ── 게시물 카드 (전체탭: 항상 펼침) ── */
-function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove }) {
+function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove, apiUrl, onRefresh }) {
   const isPublic = post.is_public_post
   return (
     <article className={`post-card${isPublic ? ' post-card-public' : ''}`}>
@@ -52,6 +122,9 @@ function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove }) 
       {!isPublic && post.images && post.images.length > 0 && (
         <ImageList images={post.images} />
       )}
+      {isPublic && (
+        <ReplySection post={post} isAdmin={isAdmin} apiUrl={apiUrl} onRefresh={onRefresh} />
+      )}
       {isAdmin && (
         <div className="post-card-admin">
           <button className="btn btn-order btn-sm" onClick={() => onMove(post.id, 'up')} disabled={isFirst}>▲</button>
@@ -64,10 +137,11 @@ function PostCard({ post, isAdmin, isFirst, isLast, onEdit, onDelete, onMove }) 
   )
 }
 
-/* ── 게시물 아코디언 행 (카테고리탭) ── */
-function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onDelete, onMove }) {
+/* ── 게시물 아코디언 행 (문의사항탭) ── */
+function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onDelete, onMove, apiUrl, onRefresh }) {
   const [open, setOpen] = useState(false)
   const isPublic = post.is_public_post
+  const hasReply = (post.replies?.length || 0) > 0
   return (
     <li className={`post-item${post.category === '공지' ? ' is-notice' : ''}${open ? ' is-open' : ''}${isPublic ? ' is-public-post' : ''}`}>
       <div className="post-row" onClick={() => setOpen(o => !o)}>
@@ -81,9 +155,7 @@ function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onD
           <span className={`cat-tag ${catClass(post.category)}`}>{post.category}</span>
           {isPublic && <span className="lock-icon">🔒</span>}
           <span className="post-title-text">{post.title}</span>
-          {!isPublic && post.images && post.images.length > 0 && (
-            <div className="post-thumb-sm"><img src={post.images[0]} alt="" /></div>
-          )}
+          {hasReply && <span className="reply-badge">{post.replies.length}</span>}
         </div>
         <div className="post-row-right">
           <span className="post-date">{post.date}{post.time ? ` ${post.time}` : ''}</span>
@@ -116,6 +188,7 @@ function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onD
               {post.content}
             </div>
             {!isPublic && post.images && post.images.length > 0 && <ImageList images={post.images} />}
+            <ReplySection post={post} isAdmin={isAdmin} apiUrl={apiUrl} onRefresh={onRefresh} />
             {isAdmin && (
               <div className="detail-admin-bar">
                 <button className="btn btn-danger btn-sm" onClick={() => onDelete(post.id)}>삭제</button>
@@ -129,8 +202,8 @@ function PostAccordion({ post, idx, total, isFirst, isLast, isAdmin, onEdit, onD
   )
 }
 
-/* ── 기타탭 공개 글쓰기 드로어 ── */
-function PublicPostDrawer({ onClose, onSaved }) {
+/* ── 문의사항 글쓰기 드로어 ── */
+function PublicPostDrawer({ onClose, onSaved, apiBaseUrl }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
@@ -153,7 +226,7 @@ function PublicPostDrawer({ onClose, onSaved }) {
     }
     setLoading(true)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/public`, {
+      const res = await fetch(`${apiBaseUrl}/api/posts/public`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), content: content.trim(), author: author.trim(), password })
@@ -177,7 +250,7 @@ function PublicPostDrawer({ onClose, onSaved }) {
       <div className="drawer" onClick={e => e.stopPropagation()}>
         <div className="drawer-handle" />
         <div className="drawer-head">
-          <h3>글쓰기 (기타)</h3>
+          <h3>문의사항 작성</h3>
           <button className="drawer-close" onClick={onClose}>×</button>
         </div>
         <div className="drawer-body">
@@ -260,7 +333,7 @@ function PostDrawer({ post, onClose, onSave }) {
             <div className="form-group">
               <label>분류</label>
               <select value={category} onChange={e => setCategory(e.target.value)}>
-                {CATEGORIES.filter(c => c !== '전체').map(c => (
+                {CATEGORIES.filter(c => c !== '전체' && c !== '문의사항').map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -362,11 +435,10 @@ export default function App() {
   const API_URL = `${BASE_URL}/api/posts`
 
   useEffect(() => {
-    // cold start 단축: 헬스체크와 데이터 요청을 동시에 날림
     fetchPosts()
-  }, [isAdmin])
+  }, [fetchPosts])
 
-  async function fetchPosts() {
+  const fetchPosts = useCallback(async () => {
     setLoading(true)
     try {
       const url = isAdmin ? `${API_URL}?admin=1` : API_URL
@@ -378,14 +450,14 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAdmin, API_URL])
 
   const filtered = activeTab === '전체'
-    ? posts.filter(p => p.category !== '기타')
+    ? posts.filter(p => p.category !== '문의사항')
     : posts.filter(p => p.category === activeTab)
 
   function tabCount(cat) {
-    if (cat === '전체') return posts.filter(p => p.category !== '기타').length
+    if (cat === '전체') return posts.filter(p => p.category !== '문의사항').length
     return posts.filter(p => p.category === cat).length
   }
 
@@ -446,6 +518,7 @@ export default function App() {
   }
 
   const telHref = `tel:${CONTACT_PHONE.replace(/[^0-9]/g, '')}`
+  const isInquiryTab = activeTab === '문의사항'
 
   return (
     <>
@@ -490,11 +563,11 @@ export default function App() {
 
       {/* 본문 */}
       <div className="page-wrap">
-        {/* 기타탭: 글쓰기 버튼 (비로그인도 가능) */}
-        {activeTab === '기타' && !isAdmin && (
+        {/* 문의사항탭: 글쓰기 버튼 (비로그인도 가능) */}
+        {isInquiryTab && !isAdmin && (
           <div className="public-write-bar">
             <button className="btn btn-primary" onClick={() => setShowPublicForm(true)}>
-              글쓰기
+              문의하기
             </button>
           </div>
         )}
@@ -506,6 +579,25 @@ export default function App() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty-row">등록된 게시물이 없습니다.</div>
+        ) : isInquiryTab ? (
+          <ul className="post-list">
+            {filtered.map((post, idx) => (
+              <PostAccordion
+                key={post.id}
+                post={post}
+                idx={idx}
+                total={filtered.length}
+                isAdmin={isAdmin}
+                isFirst={idx === 0}
+                isLast={idx === filtered.length - 1}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                onMove={handleMove}
+                apiUrl={API_URL}
+                onRefresh={fetchPosts}
+              />
+            ))}
+          </ul>
         ) : (
           <div className="card-feed">
             {filtered.map((post, idx) => (
@@ -518,6 +610,8 @@ export default function App() {
                 onEdit={openEdit}
                 onDelete={handleDelete}
                 onMove={handleMove}
+                apiUrl={API_URL}
+                onRefresh={fetchPosts}
               />
             ))}
           </div>
@@ -545,6 +639,7 @@ export default function App() {
         <PublicPostDrawer
           onClose={() => setShowPublicForm(false)}
           onSaved={fetchPosts}
+          apiBaseUrl={BASE_URL}
         />
       )}
       {showForm && (

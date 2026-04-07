@@ -526,6 +526,105 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ===== 답글 ===== */
+.reply-section {
+  margin-top: 12px;
+  border-top: 1px solid #e8ecf4;
+  padding-top: 12px;
+}
+
+.reply-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.reply-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #f0f4fb;
+  border-left: 3px solid #1a3a6b;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.reply-admin-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a3a6b;
+  background: #d0daf0;
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reply-content {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reply-date {
+  font-size: 11px;
+  color: #999;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reply-del {
+  flex-shrink: 0;
+}
+
+.reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reply-input {
+  width: 100%;
+  border: 1px solid #d0d8e8;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  color: #333;
+}
+
+.reply-input:focus {
+  outline: none;
+  border-color: #1a3a6b;
+}
+
+.reply-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a3a6b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+.btn-xs {
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
 /* ===== Mobile ===== */
 @media (max-width: 600px) {
   .post-row { padding: 12px 8px; gap: 8px; }

@@ -74,30 +74,50 @@ function getClientIp(req) {
   return req.socket?.remoteAddress || null;
 }
 
-// 1. 게시물 전체 목록 조회
-// - 일반: 공개글 + 기타탭 공개글(제목만, 내용은 마스킹)
-// - 관리자: 쿼리스트링 ?admin=1 시 복호화된 전체 데이터 반환
+// replies 테이블 자동 생성
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS replies (
+      id        SERIAL PRIMARY KEY,
+      post_id   INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      content   TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+// 1. 게시물 전체 목록 조회 (replies 포함)
 app.get('/api/posts', async (req, res) => {
   const isAdmin = req.query.admin === '1';
   try {
-    const result = await pool.query(`
+    const postsResult = await pool.query(`
       SELECT * FROM posts
       ORDER BY
         CASE WHEN category = '공지' THEN 0 ELSE 1 END,
         sort_order ASC
     `);
-    const rows = result.rows.map(post => {
+
+    const repliesResult = await pool.query(
+      'SELECT id, post_id, content, created_at FROM replies ORDER BY created_at ASC'
+    );
+    const repliesByPost = {};
+    for (const r of repliesResult.rows) {
+      if (!repliesByPost[r.post_id]) repliesByPost[r.post_id] = [];
+      repliesByPost[r.post_id].push(r);
+    }
+
+    const rows = postsResult.rows.map(post => {
+      const postWithReplies = { ...post, replies: repliesByPost[post.id] || [] };
       if (post.is_public_post) {
-        // 기타탭 공개글: 제목은 공개, 내용/IP/비밀번호는 관리자만
         return {
-          ...post,
+          ...postWithReplies,
           content: isAdmin ? decrypt(post.content) : '비밀글입니다.',
           password: undefined,
           ip_address: isAdmin ? post.ip_address : undefined,
           masked_ip: isAdmin ? maskIp(post.ip_address) : undefined,
         };
       }
-      return post;
+      return postWithReplies;
     });
     res.json(rows);
   } catch (err) {
@@ -123,7 +143,7 @@ app.post('/api/posts', async (req, res) => {
   }
 });
 
-// 2-1. 기타탭 공개 글쓰기 (비밀번호 필수, IP 수집, 내용 암호화)
+// 2-1. 문의사항탭 공개 글쓰기 (비밀번호 필수, IP 수집, 내용 암호화)
 app.post('/api/posts/public', async (req, res) => {
   const { title, content, password, author } = req.body;
   if (!title?.trim() || !content?.trim() || !password?.trim()) {
@@ -141,7 +161,7 @@ app.post('/api/posts/public', async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO posts (title, content, category, author, date, time, images, password, ip_address, is_public_post, sort_order)
-       VALUES ($1, $2, '기타', $3, $4, $5, '{}', $6, $7, TRUE, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM posts))
+       VALUES ($1, $2, '문의사항', $3, $4, $5, '{}', $6, $7, TRUE, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM posts))
        RETURNING id, title, category, author, date, time, is_public_post`,
       [title.trim(), encryptedContent, displayAuthor, date, time, hashedPw, ip]
     );
@@ -206,6 +226,37 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
+// 6. 답글 작성 (관리자 전용)
+app.post('/api/posts/:id/replies', async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  if (!content?.trim()) {
+    return res.status(400).json({ error: '내용을 입력해주세요.' });
+  }
+  try {
+    const result = await pool.query(
+      'INSERT INTO replies (post_id, content) VALUES ($1, $2) RETURNING *',
+      [id, content.trim()]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '답글 작성 중 오류 발생' });
+  }
+});
+
+// 7. 답글 삭제 (관리자 전용)
+app.delete('/api/replies/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM replies WHERE id = $1', [id]);
+    res.json({ message: '답글 삭제 완료' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '답글 삭제 중 오류 발생' });
+  }
+});
+
 // --- 배포용 정적 파일 서비스 추가 ---
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
@@ -215,10 +266,14 @@ app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`서버가 포트 ${port} 에서 실행 중입니다.`);
-  // 서버 시작 시 DB 연결 미리 수립 (첫 요청 지연 방지)
-  pool.query('SELECT 1').catch(err => console.error('DB 워밍업 실패:', err));
+  try {
+    await initDb();
+    console.log('DB 초기화 완료');
+  } catch (err) {
+    console.error('DB 초기화 실패:', err);
+  }
 
   // Render 무료 플랜 cold start 방지: 14분마다 self-ping
   const APP_URL = process.env.APP_URL;
@@ -227,6 +282,6 @@ app.listen(port, () => {
       fetch(`${APP_URL}/health`)
         .then(() => console.log('keep-alive ping 성공'))
         .catch(err => console.error('keep-alive ping 실패:', err));
-    }, 14 * 60 * 1000); // 14분 (Render는 15분 비활성 시 슬립)
+    }, 14 * 60 * 1000);
   }
 });

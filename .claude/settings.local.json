@@ -13,7 +13,9 @@
       "Bash(node server/index.js)",
       "Bash(netstat -ano)",
       "Bash(xargs -I {} taskkill /PID {} /F)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }
