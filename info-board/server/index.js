@@ -21,6 +21,9 @@ app.use(express.json({ limit: '50mb' }));
 const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+// 헬스체크 엔드포인트 (DB 연결 불필요)
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 // AES-256-GCM 암호화 키 (32바이트). .env의 ENCRYPT_KEY 우선, 없으면 고정값 사용
 const ENCRYPT_KEY = Buffer.from(
   (process.env.ENCRYPT_KEY || 'boramae_info_board_secret_key_32').padEnd(32, '0').slice(0, 32),
