@@ -25,17 +25,44 @@ function catClass(cat) {
   return map[cat] || 'cat-기타'
 }
 
+/* ── 라이트박스 ── */
+function Lightbox({ src, onClose }) {
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <button className="lightbox-close" onClick={onClose}>×</button>
+      <div className="lightbox-content" onClick={e => e.stopPropagation()}>
+        <img src={src} alt="" className="lightbox-img" />
+      </div>
+    </div>
+  )
+}
+
 /* ── 이미지 목록 ── */
 function ImageList({ images }) {
+  const [lightboxSrc, setLightboxSrc] = useState(null)
   if (!images || images.length === 0) return null
   return (
-    <div className="post-images-list">
-      {images.map((src, i) => (
-        <div key={i} className="post-image-item">
-          <img src={src} alt="" className="full-res-img" />
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="post-images-list">
+        {images.map((src, i) => (
+          <div key={i} className="post-image-item" onClick={() => setLightboxSrc(src)}>
+            <img src={src} alt="" className="full-res-img" />
+            <div className="img-zoom-hint">🔍 클릭하여 확대</div>
+          </div>
+        ))}
+      </div>
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+    </>
   )
 }
 
@@ -556,6 +583,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false)
   const [showPublicForm, setShowPublicForm] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const BASE_URL = import.meta.env.VITE_API_URL || 'https://boramae-public-production.up.railway.app'
   const API_URL = `${BASE_URL}/api/posts`
@@ -673,17 +701,31 @@ export default function App() {
 
       <nav className="nav-bar">
         <div className="nav-inner">
-          {CATEGORIES.map(cat => (
-            <button key={cat}
-              className={`nav-tab${activeTab === cat ? ' active' : ''}`}
-              onClick={() => setActiveTab(cat)}
-            >
-              {cat}
-              {tabCount(cat) > 0 && <span className="tab-badge">{tabCount(cat)}</span>}
-            </button>
-          ))}
+          <div className="nav-current" onClick={() => setMenuOpen(o => !o)}>
+            <span className="nav-current-label">
+              {activeTab}
+              {tabCount(activeTab) > 0 && <span className="tab-badge">{tabCount(activeTab)}</span>}
+            </span>
+            <span className={`hamburger-icon${menuOpen ? ' open' : ''}`}>
+              <span /><span /><span />
+            </span>
+          </div>
+          {menuOpen && (
+            <div className="nav-dropdown">
+              {CATEGORIES.map(cat => (
+                <button key={cat}
+                  className={`nav-dropdown-item${activeTab === cat ? ' active' : ''}`}
+                  onClick={() => { setActiveTab(cat); setMenuOpen(false) }}
+                >
+                  {cat}
+                  {tabCount(cat) > 0 && <span className="tab-badge">{tabCount(cat)}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </nav>
+      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} />}
 
       <div className="page-wrap">
         {isInquiryTab && !isAdmin && (

@@ -58,7 +58,7 @@ body {
   padding: 3px 9px;
 }
 
-/* ===== Nav tabs ===== */
+/* ===== Nav (햄버거 메뉴) ===== */
 .nav-bar {
   background: #fff;
   border-bottom: 1px solid #ddd;
@@ -71,29 +71,93 @@ body {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 20px;
-  display: flex;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  position: relative;
 }
-.nav-inner::-webkit-scrollbar { display: none; }
 
-.nav-tab {
-  flex-shrink: 0;
-  padding: 12px 16px;
+/* 현재 선택된 탭 표시 + 햄버거 버튼 */
+.nav-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nav-current-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a3a6b;
+}
+
+/* 햄버거 아이콘 */
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+.hamburger-icon span {
+  display: block;
+  height: 2px;
+  background: #1a3a6b;
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+  transform-origin: center;
+}
+.hamburger-icon.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger-icon.open span:nth-child(2) { opacity: 0; }
+.hamburger-icon.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* 드롭다운 메뉴 */
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-top: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 300;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  animation: dropDown 0.16s ease;
+}
+@keyframes dropDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: #555;
   cursor: pointer;
   font-family: inherit;
-  border-bottom: 3px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.12s, color 0.12s;
 }
-.nav-tab:hover { color: #1a3a6b; }
-.nav-tab.active { color: #1a3a6b; border-bottom-color: #1a3a6b; }
+.nav-dropdown-item:last-child { border-bottom: none; }
+.nav-dropdown-item:hover { background: #f4f7fc; color: #1a3a6b; }
+.nav-dropdown-item.active { color: #1a3a6b; background: #eef2fb; }
+
+/* 드롭다운 배경 클릭 닫기 */
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+}
 
 .tab-badge {
   display: inline-block;
@@ -281,8 +345,75 @@ body {
   object-fit: contain;
 }
 
+/* ===== 이미지 확대 (라이트박스) ===== */
+.post-image-item {
+  position: relative;
+  cursor: zoom-in;
+}
+.img-zoom-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.post-image-item:hover .img-zoom-hint { opacity: 1; }
+
+.lightbox-overlay {
+  position: fixed !important;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 1000;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.18s ease;
+}
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 32px;
+  line-height: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 1001;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.3); }
+.lightbox-content {
+  max-width: 100%;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  cursor: default;
+}
+
 /* 기존 그리드 스타일 제거/무시 */
-.img-grid, .img-cell, .img-more, .lightbox-overlay { display: none !important; }
+.img-grid, .img-cell, .img-more { display: none !important; }
 
 /* ===== 업로드 프리뷰 ===== */
 .upload-preview {
@@ -479,9 +610,22 @@ body {
   background: #1a3a6b;
   color: rgba(255,255,255,0.45);
   text-align: center;
-  padding: 20px;
+  padding: 20px 16px;
   font-size: 12px;
   line-height: 1.8;
+}
+.footer-contact {
+  margin-bottom: 6px;
+}
+.footer-tel {
+  font-size: 18px;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.footer-tel-desc {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  vertical-align: middle;
 }
 
 /* ===== 기타탭 공개 글쓰기 ===== */
@@ -760,13 +904,53 @@ body {
 
 /* ===== Mobile ===== */
 @media (max-width: 600px) {
-  .post-row { padding: 12px 8px; gap: 8px; }
+  /* 헤더 */
+  .header-inner { padding: 0 14px; height: 54px; }
+  .site-title { font-size: 14px; }
+  .site-title small { font-size: 10px; }
+  .nav-bar { top: 57px; }
+
+  /* 네비 드롭다운 */
+  .nav-inner { padding: 0 14px; }
+  .nav-dropdown-item { padding: 13px 16px; font-size: 14px; }
+
+  /* 페이지 */
+  .page-wrap { padding: 0 12px 80px; }
+
+  /* 목록 행 */
+  .post-row { padding: 12px 8px; gap: 6px; }
   .post-num { display: none; }
-  .post-row-right { gap: 8px; }
-  .post-thumb-sm { width: 38px; height: 38px; }
-  .detail-title-lg { font-size: 17px; }
-  .detail-body { font-size: 14px; }
-  .img-cell img { height: 200px; }
-  .img-grid-1 .img-cell img { height: 240px; }
-  .img-grid-3 .img-cell:not(:first-child) img { height: 120px; }
+  .post-row-left { gap: 6px; }
+  .post-row-right { gap: 6px; }
+  .post-date { font-size: 11px; }
+  .post-title-text { font-size: 13px; }
+
+  /* 아코디언 상세 */
+  .post-detail-inline { padding: 18px 12px 24px; }
+  .detail-title-lg { font-size: 16px; }
+  .detail-body { font-size: 14px; line-height: 1.8; }
+  .detail-meta { font-size: 11px; }
+
+  /* 포스트 카드 */
+  .post-card { padding: 14px 12px; }
+  .post-card-title { font-size: 15px; }
+  .post-card-body { font-size: 13px; }
+
+  /* 버튼 */
+  .btn-sm { padding: 3px 8px; font-size: 11px; }
+  .form-group textarea { min-height: 120px; }
+
+  /* 관리자 버튼 행 (모바일에서 개행 허용) */
+  .post-row-right { flex-wrap: wrap; justify-content: flex-end; }
+
+  /* 라이트박스 */
+  .lightbox-close { top: 10px; right: 12px; font-size: 26px; width: 38px; height: 38px; }
+
+  /* FAB / 플로팅 */
+  .floating-actions { bottom: 16px; right: 14px; gap: 8px; }
+  .float-btn { width: 44px; height: 44px; font-size: 18px; }
+  .fab { bottom: 120px; right: 14px; width: 48px; height: 48px; font-size: 24px; }
+
+  /* 줌 힌트: 모바일은 항상 표시 */
+  .img-zoom-hint { opacity: 0.85; }
 }
