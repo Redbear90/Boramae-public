@@ -27,7 +27,10 @@ if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL 환경변수가 설정되지 않았습니다.');
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 // AES-256-GCM 암호화 키 (32바이트). .env의 ENCRYPT_KEY 우선, 없으면 고정값 사용
 const ENCRYPT_KEY = Buffer.from(
