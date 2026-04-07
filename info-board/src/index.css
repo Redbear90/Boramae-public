@@ -1,0 +1,9 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: '맑은 고딕', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  background: #f4f4f4;
+  color: #333;
+}
+
+#root { min-height: 100vh; }
