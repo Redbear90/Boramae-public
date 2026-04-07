@@ -4,12 +4,12 @@ import './App.css'
 const ADMIN_ID = 'admin'
 const ADMIN_PW = 'admin1234'
 const CONTACT_PHONE = '010-2930-3705'
-const CATEGORIES = ['전체', '사업개요', '사업정보', '입지환경', '개발호재', 'Q & A', '기타']
+const CATEGORIES = ['전체', '사업개요', '사업정보', '입지환경', '접수처', 'Q & A', '기타']
 
 function catClass(cat) {
   const map = {
     '공지': 'cat-공지', '사업개요': 'cat-사업개요', '사업정보': 'cat-사업정보',
-    '입지환경': 'cat-입지환경', '개발호재': 'cat-개발호재', 'Q & A': 'cat-QA', '기타': 'cat-기타',
+    '입지환경': 'cat-입지환경', '접수처': 'cat-접수처', 'Q & A': 'cat-QA', '기타': 'cat-기타',
   }
   return map[cat] || 'cat-기타'
 }
