@@ -107,7 +107,11 @@ app.get('/api/posts', async (req, res) => {
     }
 
     const rows = postsResult.rows.map(post => {
-      const postWithReplies = { ...post, replies: repliesByPost[post.id] || [] };
+      const postWithReplies = {
+        ...post,
+        images: post.images || [],
+        replies: repliesByPost[post.id] || [],
+      };
       if (post.is_public_post) {
         return {
           ...postWithReplies,

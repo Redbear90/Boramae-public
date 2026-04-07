@@ -444,7 +444,7 @@ export default function App() {
       const url = isAdmin ? `${API_URL}?admin=1` : API_URL
       const res = await fetch(url)
       const data = await res.json()
-      setPosts(data)
+      setPosts(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('데이터를 가져오는데 실패했습니다:', err)
     } finally {
