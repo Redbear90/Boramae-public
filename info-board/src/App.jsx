@@ -357,7 +357,7 @@ export default function App() {
   const [showPublicForm, setShowPublicForm] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
 
-  const API_URL = '/api/posts'
+  const API_URL = `${import.meta.env.VITE_API_URL || ''}/api/posts`
 
   useEffect(() => {
     fetchPosts()
