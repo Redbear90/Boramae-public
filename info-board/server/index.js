@@ -208,7 +208,7 @@ const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
 // API 경로 외의 모든 요청은 index.html로 보냄 (SPA 지원)
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
