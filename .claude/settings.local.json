@@ -15,7 +15,9 @@
       "Bash(xargs -I {} taskkill /PID {} /F)",
       "Bash(taskkill:*)",
       "Bash(npx eslint:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(xargs ls:*)",
+      "Bash(git push:*)"
     ]
   }
 }
