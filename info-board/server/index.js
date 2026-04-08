@@ -94,16 +94,16 @@ async function initDb() {
 app.get('/api/posts', async (req, res) => {
   const isAdmin = req.query.admin === '1';
   try {
-    const postsResult = await pool.query(`
-      SELECT * FROM posts
-      ORDER BY
-        CASE WHEN category = '공지' THEN 0 ELSE 1 END,
-        sort_order ASC
-    `);
+    const [postsResult, repliesResult] = await Promise.all([
+      pool.query(`
+        SELECT * FROM posts
+        ORDER BY
+          CASE WHEN category = '공지' THEN 0 ELSE 1 END,
+          sort_order ASC
+      `),
+      pool.query('SELECT id, post_id, content, created_at FROM replies ORDER BY created_at ASC'),
+    ]);
 
-    const repliesResult = await pool.query(
-      'SELECT id, post_id, content, created_at FROM replies ORDER BY created_at ASC'
-    );
     const repliesByPost = {};
     for (const r of repliesResult.rows) {
       if (!repliesByPost[r.post_id]) repliesByPost[r.post_id] = [];
@@ -303,6 +303,9 @@ app.listen(port, async () => {
   try {
     await initDb();
     console.log('DB 초기화 완료');
+    // Pool 연결 미리 warm-up (첫 요청 지연 방지)
+    await pool.query('SELECT 1');
+    console.log('DB 연결 warm-up 완료');
   } catch (err) {
     console.error('DB 초기화 실패:', err);
   }
