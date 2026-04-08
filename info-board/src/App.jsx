@@ -785,7 +785,7 @@ export default function App() {
       <footer className="footer">
         <div className="footer-contact">
           <a href={telHref} className="footer-tel">📞</a>
-          <span className="footer-tel-desc"> 문의사항은 전화로 연락 주세요</span>
+          <span className="footer-tel-desc">문의사항은 전화로 연락 주세요</span>
         </div>
 
         <div className="footer-copy">

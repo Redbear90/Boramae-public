@@ -71,7 +71,7 @@ function getClientIp(req) {
   return req.socket?.remoteAddress || null;
 }
 
-// replies 테이블 + phone 컬럼 자동 생성/추가
+// replies 테이블 + phone 컬럼 자동 생성/추가 + 인덱스
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS replies (
@@ -85,6 +85,9 @@ async function initDb() {
   await pool.query(`
     ALTER TABLE posts ADD COLUMN IF NOT EXISTS phone TEXT
   `);
+  // 성능 인덱스
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_sort ON posts(category, sort_order ASC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_replies_post ON replies(post_id)`);
 }
 
 // 1. 게시물 전체 목록 조회 (replies 포함)
@@ -310,6 +313,6 @@ app.listen(port, async () => {
       fetch(`${APP_URL}/health`)
         .then(() => console.log('keep-alive ping 성공'))
         .catch(err => console.error('keep-alive ping 실패:', err));
-    }, 14 * 60 * 1000);
+    }, 5 * 60 * 1000);
   }
 });
