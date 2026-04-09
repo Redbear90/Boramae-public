@@ -22,7 +22,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
-app.options('*', cors({ origin: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
+app.options('/{*path}', cors({ origin: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json({ limit: '50mb' }));
 
 const { Pool } = pg;
