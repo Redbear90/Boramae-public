@@ -16,7 +16,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+app.options('*', cors({ origin: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json({ limit: '50mb' }));
 
 const { Pool } = pg;
