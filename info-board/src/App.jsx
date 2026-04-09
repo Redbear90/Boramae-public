@@ -459,7 +459,7 @@ function PostDrawer({ post, onClose, onSave }) {
   const fileRef = useRef()
 
   async function handleFiles(e) {
-    const BASE_URL = import.meta.env.VITE_API_URL || 'https://boramae-public-production.up.railway.app'
+    const BASE_URL = import.meta.env.VITE_API_URL || (window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin)
     Array.from(e.target.files).forEach(file => {
       const reader = new FileReader()
       reader.onload = async ev => {
@@ -599,7 +599,7 @@ export default function App() {
   const [editingPost, setEditingPost] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const BASE_URL = import.meta.env.VITE_API_URL || 'https://boramae-public-production.up.railway.app'
+  const BASE_URL = import.meta.env.VITE_API_URL || (window.location.origin.includes('localhost') ? 'http://localhost:5000' : window.location.origin)
   const API_URL = `${BASE_URL}/api/posts`
 
   const fetchPosts = useCallback(async () => {

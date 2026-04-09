@@ -81,8 +81,43 @@ function getClientIp(req) {
   return req.socket?.remoteAddress || null;
 }
 
-// replies 테이블 + phone 컬럼 자동 생성/추가 + 인덱스
+// 테이블 및 컬럼 자동 생성/추가
 async function initDb() {
+  // 1. posts 테이블 생성
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS posts (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      category TEXT NOT NULL,
+      author TEXT,
+      date TEXT,
+      time TEXT,
+      images TEXT[] DEFAULT '{}',
+      password TEXT,
+      ip_address TEXT,
+      is_public_post BOOLEAN DEFAULT FALSE,
+      phone TEXT,
+      sort_order INTEGER,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // 2. 누락된 컬럼 추가 (기존 DB에서 이전했을 경우 대비)
+  const columnsToAdd = [
+    { name: 'password', type: 'TEXT' },
+    { name: 'ip_address', type: 'TEXT' },
+    { name: 'is_public_post', type: 'BOOLEAN DEFAULT FALSE' },
+    { name: 'phone', type: 'TEXT' },
+    { name: 'sort_order', type: 'INTEGER' },
+    { name: 'images', type: 'TEXT[] DEFAULT \'{}\'' }
+  ];
+
+  for (const col of columnsToAdd) {
+    await pool.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS ${col.name} ${col.type}`);
+  }
+
+  // 3. replies 테이블 생성
   await pool.query(`
     CREATE TABLE IF NOT EXISTS replies (
       id         SERIAL PRIMARY KEY,
@@ -91,11 +126,8 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
-  // phone 컬럼이 없으면 추가 (기존 DB 호환)
-  await pool.query(`
-    ALTER TABLE posts ADD COLUMN IF NOT EXISTS phone TEXT
-  `);
-  // 성능 인덱스
+
+  // 4. 성능 인덱스
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_sort ON posts(category, sort_order ASC)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_replies_post ON replies(post_id)`);
 }
