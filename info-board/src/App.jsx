@@ -458,10 +458,24 @@ function PostDrawer({ post, onClose, onSave }) {
   const [images, setImages] = useState(post?.images || [])
   const fileRef = useRef()
 
-  function handleFiles(e) {
+  async function handleFiles(e) {
+    const BASE_URL = import.meta.env.VITE_API_URL || 'https://boramae-public-production.up.railway.app'
     Array.from(e.target.files).forEach(file => {
       const reader = new FileReader()
-      reader.onload = ev => setImages(prev => [...prev, ev.target.result])
+      reader.onload = async ev => {
+        try {
+          const res = await fetch(`${BASE_URL}/api/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: ev.target.result, filename: file.name }),
+          })
+          const data = await res.json()
+          if (data.url) setImages(prev => [...prev, data.url])
+        } catch {
+          // 업로드 실패 시 base64 fallback
+          setImages(prev => [...prev, ev.target.result])
+        }
+      }
       reader.readAsDataURL(file)
     })
     e.target.value = ''

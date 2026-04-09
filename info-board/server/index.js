@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 dotenv.config();
 
@@ -30,6 +31,15 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || 'ap-northeast-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+const S3_BUCKET = process.env.S3_BUCKET || 'boramae-images';
 
 const ENCRYPT_KEY = Buffer.from(
   (process.env.ENCRYPT_KEY || 'boramae_info_board_secret_key_32').padEnd(32, '0').slice(0, 32),
@@ -263,7 +273,30 @@ app.put('/api/posts/:id', async (req, res) => {
   }
 });
 
-// 6. 답글 작성
+// 6. 이미지 업로드 (S3)
+app.post('/api/upload', async (req, res) => {
+  const { image, filename } = req.body;
+  if (!image || !filename) return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
+  try {
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const ext = filename.split('.').pop() || 'jpg';
+    const key = `images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: `image/${ext}`,
+    }));
+    const url = `https://${S3_BUCKET}.s3.ap-northeast-2.amazonaws.com/${key}`;
+    res.json({ url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '이미지 업로드 실패' });
+  }
+});
+
+// 7. 답글 작성
 app.post('/api/posts/:id/replies', async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
