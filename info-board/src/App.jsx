@@ -13,7 +13,7 @@ function renderContent(text) {
 }
 
 const ADMIN_ID = 'admin'
-const ADMIN_PW = 'admin1234'
+const ADMIN_PW = 'korea123'
 const CONTACT_PHONE = '010-2930-3705'
 const CATEGORIES = ['전체', '사업개요', '사업정보', '입지환경', '접수처', 'Q & A', '문의사항']
 
@@ -470,9 +470,14 @@ function PostDrawer({ post, onClose, onSave }) {
             body: JSON.stringify({ image: ev.target.result, filename: file.name }),
           })
           const data = await res.json()
-          if (data.url) setImages(prev => [...prev, data.url])
+          if (data.url) {
+            setImages(prev => [...prev, data.url])
+          } else {
+            // 서버 에러 시 base64 fallback
+            setImages(prev => [...prev, ev.target.result])
+          }
         } catch {
-          // 업로드 실패 시 base64 fallback
+          // 네트워크 오류 시 base64 fallback
           setImages(prev => [...prev, ev.target.result])
         }
       }
@@ -803,7 +808,7 @@ export default function App() {
         </div>
 
         <div className="footer-copy">
-          © 2026 보라매 신속통합개발 정보공유 · 본 사이트의 정보는 참고용으로만 활용하시기 바랍니다.
+          © 2026 보라매 도심공공개발 복합사업 정보공유 · 본 사이트의 정보는 참고용으로만 활용하시기 바랍니다.
         </div>
       </footer>
 

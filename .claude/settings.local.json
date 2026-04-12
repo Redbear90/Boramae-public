@@ -17,7 +17,8 @@
       "Bash(npx eslint:*)",
       "Bash(npx vite:*)",
       "Bash(xargs ls:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(xargs cat:*)"
     ]
   }
 }

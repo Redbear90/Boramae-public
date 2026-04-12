@@ -325,13 +325,14 @@ app.post('/api/upload', async (req, res) => {
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
-    const ext = filename.split('.').pop() || 'jpg';
+    const ext = filename.split('.').pop().toLowerCase() || 'jpg';
+    const mimeExt = ext === 'jpg' ? 'jpeg' : ext;
     const key = `images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     await s3.send(new PutObjectCommand({
       Bucket: S3_BUCKET,
       Key: key,
       Body: buffer,
-      ContentType: `image/${ext}`,
+      ContentType: `image/${mimeExt}`,
     }));
     const url = `https://${S3_BUCKET}.s3.ap-northeast-2.amazonaws.com/${key}`;
     res.json({ url });
